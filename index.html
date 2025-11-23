@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bitcoin Tracker</title>
+<title>Real-Time Bitcoin Tracker</title>
 <style>
 html, body {
   margin: 0;
@@ -56,7 +56,6 @@ body {
 }
 .change.down { background-color: rgba(239,68,68,0.35); color: #f87171; }
 .change .arrow { margin-right: 0.5vw; font-weight: 900; font-size: 1.5vw; line-height: 1; }
-
 .stats-row { display: flex; gap: 1vw; justify-content: space-between; flex-wrap: wrap; }
 .stat-card { flex: 1; min-width: 15vw; background: #0a0f1a; border-radius: 0.5vw; padding: 1.5vh 1.5vw; display: flex; flex-direction: column; align-items: center; border: 1px solid #1e2a44; }
 .stat-title { font-size: 1vw; color: #a0aec0; margin-bottom: 0.5vh; font-weight: 600; }
@@ -64,7 +63,6 @@ body {
 .stat-value.high { color: #22c55e; }
 .stat-value.low { color: #ef4444; }
 .stat-value.cap { color: #fbbf24; }
-
 .chart-container {
   background: #0a0f1a;
   border-radius: 0.5vw;
@@ -84,7 +82,7 @@ body {
   <div class="top-plate">
     <div class="top-left">
       <div class="title">Bitcoin</div>
-      <div class="subtitle">BTC/USD</div>
+      <div class="subtitle">BTC/USDT</div>
       <div class="price" id="currentPrice">$--.--</div>
       <div class="change" id="priceChange">
         <span class="arrow" id="changeArrow">↑</span>
@@ -92,7 +90,6 @@ body {
       </div>
     </div>
   </div>
-
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-title">24h High</div>
@@ -107,7 +104,6 @@ body {
       <div class="stat-value cap" id="marketCap">$--.--B</div>
     </div>
   </div>
-
   <div class="chart-container">
     <canvas id="priceChart" role="img" aria-label="Bitcoin price live chart"></canvas>
   </div>
@@ -126,97 +122,95 @@ const marketCapEl = document.getElementById('marketCap');
 let priceChart;
 let priceData = [];
 let timeLabels = [];
+let lastUpdate = 0;
+const updateInterval = 500; // 0.5s throttle
 
 function formatNumber(num, decimals=2) {
   return num.toLocaleString('en-US',{minimumFractionDigits:decimals, maximumFractionDigits:decimals});
 }
 
-function updateYAxis(price) {
-  const segment = 100; // $100 bands
-  const base = Math.floor(price / segment) * segment;
-  if (priceChart.options.scales.y.min !== base) {
-    priceChart.options.scales.y.min = base;
-    priceChart.options.scales.y.max = base + segment;
+// Initialize Chart
+const ctx = document.getElementById('priceChart').getContext('2d');
+priceChart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: timeLabels, datasets:[{
+    label:'BTC/USDT',
+    data: priceData,
+    borderColor:'#22c55e',
+    backgroundColor:'rgba(34,197,94,0.3)',
+    fill:true,
+    pointRadius: 0,
+    borderWidth: 2,
+    tension: 0.4
+  }]},
+  options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:false,
+    scales:{
+      y:{beginAtZero:false, ticks:{color:'#94a3b8'}, grid:{color:'rgba(147,197,253,0.1)'}},
+      x:{ticks:{color:'#94a3b8'}, grid:{display:false}}
+    },
+    plugins:{legend:{display:false}}
   }
-}
+});
 
-async function fetchBitcoinData() {
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin');
-    const data = await res.json();
-    const marketData = data.market_data;
-    if (!marketData) return;
+// Binance WebSocket for real-time BTC/USDT trades
+const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
 
-    const currentPrice = marketData.current_price.usd;
-    const high24h = marketData.high_24h.usd;
-    const low24h = marketData.low_24h.usd;
-    const marketCap = marketData.market_cap.usd;
-    const change24h = marketData.price_change_percentage_24h;
+let lastPrice = null;
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  const currentPrice = parseFloat(data.p);
+  const now = new Date();
+  const label = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-    // Update DOM only if value changed
-    if(currentPriceEl.textContent !== `$${formatNumber(currentPrice,2)}`) currentPriceEl.textContent = `$${formatNumber(currentPrice,2)}`;
+  // 0.5s throttled update
+  const nowMs = Date.now();
+  if (nowMs - lastUpdate < updateInterval) return;
+  lastUpdate = nowMs;
+
+  // Update chart data
+  if(priceData.length >= 3600) { // keep ~1h assuming 1s ticks
+    priceData.shift();
+    timeLabels.shift();
+  }
+  priceData.push(currentPrice);
+  timeLabels.push(label);
+
+  priceChart.data.labels = timeLabels;
+  priceChart.data.datasets[0].data = priceData;
+
+  // Dynamic Y-axis zoom in $100 bands
+  const segment = 100;
+  const base = Math.floor(currentPrice / segment) * segment;
+  priceChart.options.scales.y.min = base;
+  priceChart.options.scales.y.max = base + segment;
+  priceChart.update('none');
+
+  // Update top plate
+  currentPriceEl.textContent = `$${formatNumber(currentPrice,2)}`;
+  if(lastPrice !== null){
+    const change24h = ((currentPrice - lastPrice)/lastPrice)*100;
     const isPositive = change24h >= 0;
-    const changeClass = isPositive ? 'change' : 'change down';
-    if(priceChangeEl.className !== changeClass) priceChangeEl.className = changeClass;
     changeArrowEl.textContent = isPositive ? '↑' : '↓';
-    if(changePercentEl.textContent !== `${Math.abs(change24h).toFixed(2)}%`) changePercentEl.textContent = `${Math.abs(change24h).toFixed(2)}%`;
-    if(high24hEl.textContent !== `$${formatNumber(high24h,2)}`) high24hEl.textContent = `$${formatNumber(high24h,2)}`;
-    if(low24hEl.textContent !== `$${formatNumber(low24h,2)}`) low24hEl.textContent = `$${formatNumber(low24h,2)}`;
-    if(marketCapEl.textContent !== `$${(marketCap/1e9).toFixed(2)}B`) marketCapEl.textContent = `$${(marketCap/1e9).toFixed(2)}B`;
-
-    const now = new Date();
-    const label = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-    if(priceData.length >= 360) { priceData.shift(); timeLabels.shift(); } // max 1-hour data (360 points @ 10s)
-    priceData.push(currentPrice);
-    timeLabels.push(label);
-
-    if(!priceChart){
-      const ctx = document.getElementById('priceChart').getContext('2d');
-      priceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: timeLabels,
-          datasets:[{
-            label:'BTC/USD',
-            data: priceData,
-            borderColor:'#22c55e',
-            backgroundColor:'rgba(34,197,94,0.3)',
-            fill:true,
-            pointRadius: 0,
-            borderWidth: 2,
-            tension: 0.4
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          animation:false,
-          scales:{
-            y:{beginAtZero:false, ticks:{color:'#94a3b8'}, grid:{color:'rgba(147,197,253,0.1)'}},
-            x:{ticks:{color:'#94a3b8'}, grid:{display:false}}
-          },
-          plugins:{legend:{display:false}}
-        }
-      });
-    } else {
-      priceChart.data.labels = timeLabels;
-      priceChart.data.datasets[0].data = priceData;
-      updateYAxis(currentPrice);
-      priceChart.update('none');
-    }
-
-  } catch(err){
-    console.error('Failed to fetch BTC data', err);
+    changePercentEl.textContent = `${Math.abs(change24h).toFixed(2)}%`;
+    priceChangeEl.className = 'change' + (isPositive ? '' : ' down');
   }
-}
+  lastPrice = currentPrice;
+};
 
-// Initial fetch
-fetchBitcoinData();
-// Optimized 5-second updates
-setInterval(fetchBitcoinData, 1000);
+// Fetch 24h stats from Binance REST API once at start
+async function fetchStats() {
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT");
+    const data = await res.json();
+    high24hEl.textContent = `$${formatNumber(parseFloat(data.highPrice),2)}`;
+    low24hEl.textContent = `$${formatNumber(parseFloat(data.lowPrice),2)}`;
+    marketCapEl.textContent = `$--`; // Binance API doesn't provide market cap directly
+  } catch(e) { console.error(e); }
+}
+fetchStats();
 </script>
 </body>
 </html>
-
-
