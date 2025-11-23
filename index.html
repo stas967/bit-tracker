@@ -202,7 +202,7 @@ chart = new Chart(ctx, {
 
 /* --- Dynamic 5k Price Segments --- */
 function updateYAxis(price) {
-  const segment = 1000; // 1k bands now
+  const segment = 100; // 1k bands now
   const base = Math.floor(price / segment) * segment;
   chart.options.scales.y.min = base;
   chart.options.scales.y.max = base + segment;
@@ -245,4 +245,5 @@ startSocket();
 
 </body>
 </html>
+
 
