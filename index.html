@@ -29,7 +29,20 @@ body {
   flex-direction: column;
   gap: 2vh;
   padding: 2vh 2vw;
+  box-sizing: border-box;
+  overflow: hidden; /* FIX */
 }
+
+.chart-container {
+  background: #0a0f1a;
+  border-radius: 0.5vw;
+  padding: 2vh 2vw;
+  flex: 1 1 auto;   /* FIX */
+  min-height: 0;    /* SUPER IMPORTANT FIX */
+  overflow: hidden;
+  border: 1px solid #1e2a44;
+}
+
 
 .top-plate {
   background: linear-gradient(to bottom, #0f1526, #121b2f);
@@ -352,3 +365,4 @@ startRealTime();
 
 </body>
 </html>
+
