@@ -4,80 +4,121 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Real-Time Bitcoin Tracker</title>
+
 <style>
 html, body {
-  margin: 0; padding: 0;
-  width: 100%; height: 100%;
-  background: #0a0f1a; color: #fff;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #0a0f1a;
+  color: #fff;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
 }
-body { display: flex; justify-content: center; align-items: center; }
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
 .container {
   width: calc(100vw - 100px);
   height: calc(100vh - 100px);
-  display: flex; flex-direction: column;
-  gap: 2vh; padding: 2vh 2vw;
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+  padding: 2vh 2vw;
 }
 
-/* --- TOP PLATE --- */
 .top-plate {
   background: linear-gradient(to bottom, #0f1526, #121b2f);
   border-radius: 0.5vw;
   padding: 2vh 2vw;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border: 1px solid #1e2a44;
 }
 
 .top-left { display: flex; flex-direction: column; }
 
-/* === NEW SLIDER AREA === */
-.top-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1vh;
-}
-.slider-label { font-size: 0.9vw; color: #a0aec0; margin-bottom: 0.3vh; }
-.range-select {
-  width: 10vw;
-  -webkit-appearance: none;
-  height: 0.6vw;
-  background: #1e2a44;
-  border-radius: 1vw;
-  outline: none;
-}
-.range-select::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 1vw; height: 1vw;
-  border-radius: 50%;
-  background: #22c55e;
-  cursor: pointer;
-}
-.range-select::-moz-range-thumb {
-  width: 1vw; height: 1vw; border-radius: 50%;
-  background: #22c55e; cursor: pointer;
-}
-/* ======================= */
+.title { font-weight: 700; font-size: 2.5vw; }
+.subtitle { color: #a0aec0; font-size: 1vw; margin-top: 0.5vh; }
+.price { font-size: 3vw; font-weight: 800; margin-top: 1vh; }
 
-.title { font-size: 2.5vw; font-weight: 700; }
-.subtitle { color: #a0aec0; font-size: 1vw; }
-.price { font-size: 3vw; font-weight: 800; }
 .change {
   margin-top: 1vh;
   background-color: rgba(16,185,129,0.35);
   color: #6ee7b7;
+  font-weight: 600;
   padding: 0.5vh 1vw;
   border-radius: 1vw;
+  font-size: 1vw;
 }
-.change.down { background-color: rgba(239,68,68,0.35); color: #f87171; }
+.change.down {
+  background-color: rgba(239,68,68,0.35);
+  color: #f87171;
+}
+
+/* ========= NEW RANGE SELECTOR ========= */
+
+.top-select {
+  display: flex;
+  gap: 0.5vw;
+  align-items: center;
+}
+
+.select-btn {
+  padding: 0.5vh 1vw;
+  background: #1a2336;
+  border: 1px solid #1e2a44;
+  color: #a0aec0;
+  font-size: 0.9vw;
+  border-radius: 0.5vw;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.select-btn:hover {
+  background: #24304a;
+  color: #d4d7dd;
+}
+
+.select-btn.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #0a0f1a;
+  font-weight: 700;
+}
+
+/* ===================================== */
+
+.stats-row {
+  display: flex;
+  gap: 1vw;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
 
 .stat-card {
-  flex: 1; background: #0a0f1a;
-  border-radius: 0.5vw; padding: 1.5vh 1.5vw;
+  flex: 1;
+  min-width: 15vw;
+  background: #0a0f1a;
+  border-radius: 0.5vw;
+  padding: 1.5vh 1.5vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   border: 1px solid #1e2a44;
 }
+
+.stat-title { font-size: 1vw; color: #a0aec0; margin-bottom: 0.5vh; font-weight: 600; }
+
+.stat-value { font-size: 1.5vw; font-weight: 700; }
+.stat-value.high { color: #22c55e; }
+.stat-value.low { color: #ef4444; }
+.stat-value.cap { color: #fbbf24; }
 
 .chart-container {
   background: #0a0f1a;
@@ -86,31 +127,41 @@ body { display: flex; justify-content: center; align-items: center; }
   flex-grow: 1;
   border: 1px solid #1e2a44;
 }
-#priceChart { width: 100% !important; height: 100% !important; }
+
+#priceChart {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100%;
+}
 
 </style>
 </head>
-<body>
 
+<body>
 <div class="container">
 
   <div class="top-plate">
+
     <div class="top-left">
       <div class="title">Bitcoin</div>
       <div class="subtitle">BTC/USDT</div>
       <div class="price" id="currentPrice">$--.--</div>
+
       <div class="change" id="priceChange">
         <span class="arrow" id="changeArrow">↑</span>
         <span id="changePercent">0.00%</span> 24h
       </div>
     </div>
 
-    <!-- ⭐ NEW SLIDER -->
-    <div class="top-right">
-      <div class="slider-label">View Range</div>
-      <input type="range" min="0" max="4" value="0" class="range-select" id="rangeSelect">
-      <div id="rangeLabel" style="font-size:0.9vw;color:#a0aec0;">Real-Time</div>
+    <!-- NEW sleek selector -->
+    <div class="top-select">
+      <button class="select-btn active" data-range="realtime">Real-Time</button>
+      <button class="select-btn" data-range="1h">1H</button>
+      <button class="select-btn" data-range="1d">1D</button>
+      <button class="select-btn" data-range="1m">1M</button>
+      <button class="select-btn" data-range="1y">1Y</button>
     </div>
+
   </div>
 
   <div class="stats-row">
@@ -131,7 +182,7 @@ body { display: flex; justify-content: center; align-items: center; }
   </div>
 
   <div class="chart-container">
-    <canvas id="priceChart"></canvas>
+    <canvas id="priceChart" role="img" aria-label="Bitcoin price live chart"></canvas>
   </div>
 
 </div>
@@ -139,12 +190,12 @@ body { display: flex; justify-content: center; align-items: center; }
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-/* =============== EXISTING VARIABLES =============== */
 let priceChart;
 let priceData = [];
 let timeLabels = [];
 let lastUpdate = 0;
 const updateInterval = 500;
+
 let ws = null;
 let lastPrice = null;
 
@@ -153,38 +204,46 @@ const priceChangeEl = document.getElementById('priceChange');
 const changeArrowEl = document.getElementById('changeArrow');
 const changePercentEl = document.getElementById('changePercent');
 
-/* ============= SLIDER LOGIC (NEW) ============= */
-const rangeSelect = document.getElementById("rangeSelect");
-const rangeLabel = document.getElementById("rangeLabel");
-
-const modes = ["Real-Time", "1H", "1D", "1M", "1Y"];
-const intervals = {
-  "1H":  { interval:"1m",  limit:60 },
-  "1D":  { interval:"15m", limit:96 },
-  "1M":  { interval:"4h",  limit:180 },
-  "1Y":  { interval:"1d",  limit:365 }
-};
-
-rangeSelect.addEventListener("input", () => {
-  const mode = modes[rangeSelect.value];
-  rangeLabel.textContent = mode;
-
-  if (mode === "Real-Time") {
-    startRealTime();
-  } else {
-    stopRealTime();
-    loadHistorical(mode);
+/* ========================= CHART INIT ========================= */
+const ctx = document.getElementById("priceChart").getContext("2d");
+priceChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: timeLabels,
+    datasets: [{
+      label:'BTC/USDT',
+      data: priceData,
+      borderColor:'#22c55e',
+      backgroundColor:'rgba(34,197,94,0.3)',
+      fill:true,
+      pointRadius: 0,
+      borderWidth: 2,
+      tension: 0.4
+    }]
+  },
+  options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:false,
+    scales:{
+      x:{ ticks:{color:'#94a3b8'}, grid:{display:false}},
+      y:{ ticks:{color:'#94a3b8'}, grid:{color:'rgba(147,197,253,0.1)'}}
+    },
+    plugins:{ legend:{display:false} }
   }
 });
 
-/* ============= REAL-TIME MODE ============= */
+/* ========================= REAL-TIME MODE ========================= */
+
 function startRealTime() {
   if (ws) ws.close();
+
   ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     const currentPrice = parseFloat(data.p);
+
     const now = new Date();
     const label = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
@@ -194,11 +253,16 @@ function startRealTime() {
 
     priceData.push(currentPrice);
     timeLabels.push(label);
-    if (priceData.length > 1000) { priceData.shift(); timeLabels.shift(); }
+
+    if (priceData.length > 1000) {
+      priceData.shift();
+      timeLabels.shift();
+    }
 
     updateChart();
 
     currentPriceEl.textContent = `$${currentPrice.toLocaleString()}`;
+
     if (lastPrice !== null) {
       const diff = ((currentPrice - lastPrice) / lastPrice) * 100;
       changeArrowEl.textContent = diff >= 0 ? "↑" : "↓";
@@ -209,54 +273,56 @@ function startRealTime() {
   };
 }
 
-/* ============= HISTORICAL MODE ============= */
-async function loadHistorical(mode) {
-  priceData = [];
-  timeLabels = [];
+function stopRealTime() {
+  if (ws) { ws.close(); ws = null; }
+}
 
-  const cfg = intervals[mode];
-  const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${cfg.interval}&limit=${cfg.limit}`;
+/* ========================= HISTORICAL MODES ========================= */
 
+async function loadHistoricalRange(mode) {
+  let interval = "1m";
+  let limit = 60;
+
+  if (mode === "1h") { interval = "1m"; limit = 60; }
+  if (mode === "1d") { interval = "15m"; limit = 96; }
+  if (mode === "1m") { interval = "4h"; limit = 180; }
+  if (mode === "1y") { interval = "1d"; limit = 365; }
+
+  const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
   const res = await fetch(url);
   const data = await res.json();
 
-  data.forEach(candle => {
-    const price = parseFloat(candle[4]);
-    const time = new Date(candle[0]).toLocaleDateString();
-    priceData.push(price);
-    timeLabels.push(time);
+  priceData.length = 0;
+  timeLabels.length = 0;
+
+  data.forEach(c => {
+    priceData.push(parseFloat(c[4]));
+    timeLabels.push(new Date(c[0]).toLocaleDateString());
   });
 
   updateChart();
 }
 
-/* ============= CHART SETUP ============= */
-const ctx = document.getElementById("priceChart").getContext("2d");
-priceChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: timeLabels,
-    datasets: [{
-      label: "BTC/USDT",
-      data: priceData,
-      borderColor: "#22c55e",
-      backgroundColor: "rgba(34,197,94,0.3)",
-      fill: true,
-      tension: 0.4,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    animation: false,
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: { ticks: { color:"#94a3b8" }, grid:{ display:false }},
-      y: { ticks: { color:"#94a3b8" }, grid:{ color:"rgba(147,197,253,0.1)" }}
-    },
-    plugins: { legend:{ display:false } }
-  }
+/* ========================= SELECTOR HANDLER ========================= */
+
+document.querySelectorAll(".select-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+
+    document.querySelectorAll(".select-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const mode = btn.getAttribute("data-range");
+
+    if (mode === "realtime") {
+      startRealTime();
+    } else {
+      stopRealTime();
+      loadHistoricalRange(mode);
+    }
+  });
 });
+
+/* ========================= CHART UPDATE ========================= */
 
 function updateChart() {
   priceChart.data.labels = timeLabels;
@@ -264,12 +330,24 @@ function updateChart() {
   priceChart.update("none");
 }
 
-function stopRealTime() {
-  if (ws) { ws.close(); ws = null; }
+/* ========================= STATS FETCH ========================= */
+
+async function fetchStats() {
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT");
+    const data = await res.json();
+
+    document.getElementById('high24h').textContent = `$${parseFloat(data.highPrice).toLocaleString()}`;
+    document.getElementById('low24h').textContent = `$${parseFloat(data.lowPrice).toLocaleString()}`;
+    document.getElementById('marketCap').textContent = `$--`;
+  } catch(err) {
+    console.error(err);
+  }
 }
 
-/* Start in real-time mode */
+fetchStats();
 startRealTime();
+
 </script>
 
 </body>
