@@ -43,6 +43,14 @@ body {
   border: 1px solid #1e2a44;
 }
 
+.top-select {
+  position: absolute; /* anchors to top-plate */
+  top: 1vh;           /* adjust as you like */
+  right: 2vw;         /* perfect right corner */
+  display: flex;
+  gap: 0.5vw;
+}
+
 
 .top-plate {
   background: linear-gradient(to bottom, #0f1526, #121b2f);
@@ -52,6 +60,7 @@ body {
   justify-content: space-between;
   align-items: center;
   border: 1px solid #1e2a44;
+  position: relative;
 }
 
 .top-left { display: flex; flex-direction: column; }
@@ -76,11 +85,6 @@ body {
 
 /* ========= NEW RANGE SELECTOR ========= */
 
-.top-select {
-  display: flex;
-  gap: 0.5vw;
-  align-items: center;
-}
 
 .select-btn {
   padding: 0.5vh 1vw;
@@ -365,4 +369,5 @@ startRealTime();
 
 </body>
 </html>
+
 
