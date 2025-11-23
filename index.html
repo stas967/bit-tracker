@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bitcoin Tracker</title>
+<title>Bitcoin Tracker (Realtime)</title>
 
 <style>
 html, body {
@@ -43,10 +43,10 @@ body {
   align-items: center;
   border: 1px solid #1e2a44;
 }
-.top-left { display: flex; flex-direction: column; }
-.title { font-weight: 700; font-size: 2.5vw; line-height: 1.2; }
-.subtitle { color: #a0aec0; font-size: 1vw; margin-top: 0.5vh; }
+.title { font-weight: 700; font-size: 2.5vw; }
+.subtitle { color: #a0aec0; font-size: 1vw; }
 .price { font-size: 3vw; font-weight: 800; margin-top: 1vh; }
+
 .change {
   margin-top: 1vh;
   background-color: rgba(16,185,129,0.35);
@@ -59,25 +59,7 @@ body {
   align-items: center;
 }
 .change.down { background-color: rgba(239,68,68,0.35); color: #f87171; }
-.change .arrow { margin-right: 0.5vw; font-weight: 900; font-size: 1.5vw; line-height: 1; }
-
-.stats-row { display: flex; gap: 1vw; flex-wrap: wrap; }
-.stat-card {
-  flex: 1;
-  min-width: 240px;
-  background: #0a0f1a;
-  border-radius: 0.5vw;
-  padding: 1.5vh 1.5vw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 1px solid #1e2a44;
-}
-.stat-title { font-size: 1vw; color: #a0aec0; margin-bottom: 0.5vh; font-weight: 600; }
-.stat-value { font-size: 1.5vw; font-weight: 700; }
-.stat-value.high { color: #22c55e; }
-.stat-value.low { color: #ef4444; }
-.stat-value.cap { color: #fbbf24; }
+.change .arrow { margin-right: 0.5vw; font-weight: 900; font-size: 1.5vw; }
 
 .chart-container {
   background: #0a0f1a;
@@ -86,7 +68,6 @@ body {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
   overflow: hidden;
   border: 1px solid #1e2a44;
 }
@@ -94,19 +75,19 @@ body {
 #priceChart {
   width: 100% !important;
   height: 100% !important;
-  max-height: 100%;
-  box-sizing: border-box;
 }
 </style>
 </head>
 
 <body>
 <div class="container">
+
   <div class="top-plate">
-    <div class="top-left">
+    <div>
       <div class="title">Bitcoin</div>
-      <div class="subtitle">BTC/USD</div>
+      <div class="subtitle">BTC/USDT (Binance)</div>
       <div class="price" id="currentPrice">$--.--</div>
+
       <div class="change" id="priceChange">
         <span class="arrow" id="changeArrow">↑</span>
         <span id="changePercent">0.00%</span> 24h
@@ -114,153 +95,128 @@ body {
     </div>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-title">24h High</div>
-      <div class="stat-value high" id="high24h">$--.--</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">24h Low</div>
-      <div class="stat-value low" id="low24h">$--.--</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">Market Cap</div>
-      <div class="stat-value cap" id="marketCap">$--.--</div>
-    </div>
-  </div>
-
   <div class="chart-container">
     <canvas id="priceChart"></canvas>
   </div>
+
 </div>
 
-<!-- FIXED: UNPKG BLOCKED → JSDELIVR -->
+<!-- Chart.js CDN (safe) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
 <script>
+/* DOM Elements */
 const currentPriceEl = document.getElementById('currentPrice');
 const priceChangeEl = document.getElementById('priceChange');
 const changeArrowEl = document.getElementById('changeArrow');
 const changePercentEl = document.getElementById('changePercent');
-const high24hEl = document.getElementById('high24h');
-const low24hEl = document.getElementById('low24h');
-const marketCapEl = document.getElementById('marketCap');
 
-let priceChart;
+/* Chart Data Buffers */
 let priceData = [];
 let timeLabels = [];
+let priceChart = null;
 
-function formatNumber(num, decimals = 2) {
-  return num.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+/* Create Chart */
+function initChart() {
+  const ctx = document.getElementById("priceChart").getContext("2d");
+
+  priceChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeLabels,
+      datasets: [{
+        label: "BTC/USDT",
+        data: priceData,
+        borderColor: "#22c55e",
+        backgroundColor: "rgba(34,197,94,0.3)",
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 150,
+      scales: {
+        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(147,197,253,0.1)" }},
+        x: { ticks: { color: "#94a3b8" }, grid: { display: false }}
+      },
+      plugins: { legend: { display: false } }
+    }
   });
 }
 
-async function fetchBitcoinData() {
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin');
+/* Update UI Price */
+function updatePriceUI(price, prevPrice) {
+  currentPriceEl.textContent = "$" + price.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
-    if (!res.ok) {
-      console.warn("API error:", res.status);
-      return;
-    }
+  if (prevPrice == null) return;
 
-    const data = await res.json();
-    const m = data.market_data;
-    if (!m) return;
+  const diff = price - prevPrice;
+  const percent = (diff / prevPrice) * 100;
 
-    const currentPrice = m.current_price.usd;
-    const high24h = m.high_24h.usd;
-    const low24h = m.low_24h.usd;
-    const marketCap = m.market_cap.usd;
-    const change24h = m.price_change_percentage_24h;
+  changePercentEl.textContent = Math.abs(percent).toFixed(2) + "%";
 
-    // Update UI
-    currentPriceEl.textContent = `$${formatNumber(currentPrice)}`;
-
-    const positive = change24h >= 0;
-    changeArrowEl.textContent = positive ? "↑" : "↓";
-    priceChangeEl.className = "change" + (positive ? "" : " down");
-    changePercentEl.textContent = `${Math.abs(change24h).toFixed(2)}%`;
-
-    high24hEl.textContent = `$${formatNumber(high24h)}`;
-    low24hEl.textContent = `$${formatNumber(low24h)}`;
-    marketCapEl.textContent = `$${(marketCap / 1e9).toFixed(2)}B`;
-
-    // Chart data update
-    const label = new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
-
-    if (priceData.length >= 60) {
-      priceData.shift();
-      timeLabels.shift();
-    }
-
-    priceData.push(currentPrice);
-    timeLabels.push(label);
-
-    // Chart.js loaded?
-    if (typeof Chart === "undefined") {
-      console.error("Chart.js is not loaded - cannot draw chart.");
-      return;
-    }
-
-    if (!priceChart) {
-      const ctx = document.getElementById('priceChart').getContext('2d');
-
-      priceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: timeLabels,
-          datasets: [{
-            label: 'BTC/USD',
-            data: priceData,
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34,197,94,0.3)',
-            fill: true,
-            pointRadius: 0,
-            borderWidth: 2,
-            tension: 0.4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          resizeDelay: 200,
-          scales: {
-            y: {
-              beginAtZero: false,
-              ticks: { color: '#94a3b8' },
-              grid: { color: 'rgba(147,197,253,0.1)' }
-            },
-            x: {
-              ticks: { color: '#94a3b8' },
-              grid: { display: false }
-            }
-          },
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-
-    } else {
-      priceChart.data.labels = timeLabels;
-      priceChart.data.datasets[0].data = priceData;
-      priceChart.update("none");
-    }
-
-  } catch (err) {
-    console.error("Failed to fetch BTC data", err);
+  if (percent >= 0) {
+    changeArrowEl.textContent = "↑";
+    priceChangeEl.classList.remove("down");
+  } else {
+    changeArrowEl.textContent = "↓";
+    priceChangeEl.classList.add("down");
   }
 }
 
-// FIRST LOAD
-fetchBitcoinData();
+/* Update Chart */
+function updateChart(price) {
+  const timestamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
 
-// SAFE INTERVAL (NO RATE LIMITING)
-setInterval(fetchBitcoinData, 5000);
+  if (priceData.length > 300) {
+    priceData.shift();
+    timeLabels.shift();
+  }
+
+  priceData.push(price);
+  timeLabels.push(timestamp);
+
+  if (priceChart) {
+    priceChart.update("none");
+  }
+}
+
+/* REALTIME WEBSOCKET */
+let lastPrice = null;
+
+function startRealtime() {
+  const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    const price = parseFloat(msg.p);
+
+    updatePriceUI(price, lastPrice);
+    updateChart(price);
+
+    lastPrice = price;
+  };
+
+  ws.onclose = () => {
+    console.warn("WebSocket closed — reconnecting...");
+    setTimeout(startRealtime, 1000);
+  };
+}
+
+/* INIT */
+initChart();
+startRealtime();
+
 </script>
 </body>
 </html>
